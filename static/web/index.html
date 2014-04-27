@@ -1,0 +1,285 @@
+<html>
+<head><title>DocuFlow Chart</title>
+	<script src="jquery-1.9.1.min.js"></script>
+	<style>
+		.header {width:100%;height:30px;font-size:125%;background-color:orange;}
+		/*.comment-holder {width:60%;max-width:400px;min-width:200px;border:solid;margin-top:5%;left:20%;position:absolute;}*/
+		.comment-holder {}
+		.header-bar {width:100%;height:20px;background-color:orange;}
+		/*#commentTitle {display:block;float:left;font-weight: bold;}
+		#commentId {display:block;float:right;}*/
+		#paper {width:600px;height:500px;background-color:gray;}
+	</style>
+
+	<link rel="stylesheet" href="joint.css" />
+	<script src="joint.js"></script>
+</head>
+<body>
+<div class="header"> 
+<span>DocuFlow</span>
+</div>
+<table>
+<tr><td style="width:40%;">
+<div class="commentInfo">
+	<input type="checkbox" name="nodeActive" value="active" onclick=""><label>Include</label>	
+	<div id="commentTitle">Placeholder</div>
+	<div id="commentId">Placeholder</div>
+	<div id="commentAuthor">Placeholder</div>
+	<div id="commentParams">Placeholder</div>
+	<div id="commentParam">
+	</div>
+	<div id="commentFilename">Placeholder</div>
+	<button onclick="overlord.prevComment()">Prev</button>
+	<button onclick="overlord.nextComment()">Next</button>
+
+</div>
+</td>
+<td>
+<div id='paper'></div>
+</td>
+</tr>       
+<script>
+//-------------------------------------------------------------------------------------------------------
+//Make our drawing surface
+var graph = new joint.dia.Graph;
+
+var paper = new joint.dia.Paper({
+    el: $('#paper'),
+    width: 600,
+    height: 500,
+    model: graph
+});
+//------------------------------------------------------------------------
+
+// Here we load in the xml document
+var xmlhttp = new XMLHttpRequest();
+xmlhttp.open("GET", 'samplecomments.xml', false);
+xmlhttp.setRequestHeader('Content-Type', 'text/xml');
+xmlhttp.send();
+xmlDoc = xmlhttp.responseXML;
+xmlResults = $.parseXML(xmlDoc);
+$xml = $( xmlDoc );
+
+// These are the fields that we are caring about from the xml
+var commentFields =[
+	["id",false],
+	["title",false],
+	["author",false],
+	["filename",false],
+	["params",false],
+	["param",true]
+];
+
+// This function searches for an xml field inside whatever segment of the xml it is passed in. If there can be multiple instances of a paramter, it passes it back inside of an array. 
+function findFieldInComment(toSearch,fieldEntry){
+	var fieldName = fieldEntry[0];
+	var multipleEntryPossible = fieldEntry[1];
+	if (!multipleEntryPossible){
+		$searchResult = toSearch.find(fieldEntry[0]);
+		returnValue=$searchResult.text();
+	}
+	else {
+		var returnValue = [];
+		numberValues = 	toSearch.find(fieldName).length;
+		for (var i=0;i<numberValues;i++){
+			currentFindCmd = fieldName + ":eq(" + i + ")";
+			$searchResult = toSearch.find(currentFindCmd);
+			tempVal =$searchResult.text();
+			returnValue.push(tempVal);
+		}
+	}
+	return returnValue
+}
+
+
+/*var nodeEntry={author:"Mog",title:"Sushi",params:["waffles","more waffles","WAFFLESNOW!"],id:12312,filename:"mogmog.txt",linesofcode:[12,15]}
+
+var nodeEntry2={author:"Fokoro",title:"Rice Dishes",params:["pants","*stares*","pantspants!"],id:34543,filename:"brick.txt",linesofcode:[12,15]}
+
+var nodeEntry3={author:"Booze",title:"Saki",params:["applejuices","cartoons","othertoddlerthingsplz"],id:222222,filename:"fuzzybear.txt",linesofcode:[14,1002]}
+
+var nodeEntries = [nodeEntry,nodeEntry2,nodeEntry3];*/
+
+//-------------------------------------------------------------------------------------------------------
+// NODE MANAGER DEFINITION (AKA OVERLORD)
+function NodeManager(){}
+NodeManager.prototype.activeNodes = null;
+NodeManager.prototype.allNodes = null;
+NodeManager.prototype.nodes = null;
+NodeManager.prototype.getActiveNodes = function(){
+	return this.activeNodes;
+}
+NodeManager.prototype.checkNodeInList = function (nodeID,checkList) {
+	nodeIndex = this[checkList].indexOf(nodeID);
+	if (nodeIndex < 0){
+		return [false,nodeIndex];
+	}
+	else{
+		return [true,nodeIndex];
+	}
+}
+NodeManager.prototype.addNode = function (nodeID,checkList){
+	checkVal = this.checkNodeInList(nodeID,checkList);
+	if (!checkVal[0]){
+		this[checkList].push(nodeID);
+	}
+}
+NodeManager.prototype.removeNode = function (nodeID, checkList) {
+	checkVal = this.checkNodeInList(nodeID,checkList);
+	if (checkVal[0]){
+		this[checkList].splice(nodeID,1);
+	}
+
+}
+NodeManager.prototype.init = function () {
+	this.allNodes = [];
+	this.activeNodes = [];
+	this.nodes= {};
+}
+NodeManager.prototype.makeNewNode = function(nodeInfo){
+	currentID = nodeInfo.id;
+	this.nodes[currentID] = new Node;
+	this.nodes[currentID].init(nodeInfo);
+	this.addNode(currentID,"allNodes");	
+}
+NodeManager.prototype.displayedNode = null;
+NodeManager.prototype.nextNode = function(){
+	position = this.checkNodeInList(this.displayedNode,"allNodes")[1];
+	if ((position + 1) < this.allNodes.length){
+		this.displayedNode = this.allNodes[position + 1];
+	}
+	else{
+		this.displayedNode = this.allNodes[0];
+	}
+}
+NodeManager.prototype.prevNode = function(){
+	position = this.checkNodeInList(this.displayedNode,"allNodes")[1];
+	if ((position -1) >= 0){
+		this.displayedNode = this.allNodes[position - 1];
+	}
+	else{
+		this.displayedNode = this.allNodes[this.allNodes.length - 1];
+	}
+}
+NodeManager.prototype.displayNodeInfo = function(nodeID){
+	currentNode = this.nodes[nodeID];
+	$( "#commentId" ).text("ID: " + currentNode.id);
+	$( "#commentTitle" ).text(currentNode.title);
+	$( "#commentAuthor" ).text( "Author: " + currentNode.author);
+	$( "#commentParams" ).text("Params: " + currentNode.params);
+	$( "#commentFilename" ).text(currentNode.filename);
+
+	if (typeof currentNode.param !== "string"){
+		$( "#commentParam").text("");
+		for (var k = 0; k < currentNode.param.length;k++){
+			$( "#commentParam").append("<ul>"+currentNode.param[k]+"</ul>");
+		}
+	}
+	else{
+		$( "#commentParam").text(currentNode.param);
+	}
+}
+NodeManager.prototype.nextComment = function(){
+	this.nextNode();
+	this.displayNodeInfo(this.displayedNode);
+}
+NodeManager.prototype.prevComment = function(){
+	this.prevNode();
+	this.displayNodeInfo(this.displayedNode);
+}
+NodeManager.prototype.activateNode = function(nodeID){
+	this.nodes[nodeID].activate(0,0,graph);
+	this.addNode(nodeID,'activeNodes');
+}
+NodeManager.prototype.deactivateNode = function(nodeID){
+	this.nodes[nodeID].deactivate();
+	this.removeNode(nodeID,'activeNodes');
+}
+//-------------------------------------------------------------------------------------------------------
+// HERE WE INITIALIZE OUR OVERLORD
+
+var overlord = new NodeManager();
+overlord.init();
+
+//-------------------------------------------------------------------------------------------------------
+// This is our individual Node object. This will keep all the information for us. Passed in or otherwise
+function Node(){}
+// For graph rendering
+Node.prototype.connections = null;
+Node.prototype.description = null;
+
+// Passed-in node information
+Node.prototype.activeFlag = null;
+Node.prototype.title = null;
+Node.prototype.author = null;
+Node.prototype.params = null;
+Node.prototype.id = null;
+Node.prototype.filename = null;
+Node.prototype.linesofcode = null;
+Node.prototype.jointJsShape = null;
+Node.prototype.getValue = function(valueName){
+	if (this[valueName] !== undefined) {
+		return this[valueName];
+	}
+	else {
+		console.log("Sorry bub, you are just plumb out of luck");	
+	}
+}
+Node.prototype.setValue = function(valueName, valueValue){
+	this[valueName] = valueValue;
+}
+Node.prototype.init = function(nodeEntry){
+	// Initialize the node object with all of our passed-in information
+
+	var nodeKeys = Object.keys(nodeEntry);
+	for (var i = 0; i < nodeKeys.length; i++){
+		var currentKey = nodeKeys[i];
+		this.setValue(currentKey,nodeEntry[currentKey]);
+	}
+}
+Node.prototype.activate = function(startX,startY,graphName) {
+	this.jointJsShape = new joint.shapes.basic.Rect({
+    	position: { x: startX, y: startY },
+    	size: { width: 150, height: 30 },
+    	attrs: { rect: { fill: 'orange' }, text: { text: this.getValue('title'), fill: 'black' } }
+	});
+	graph.addCells([this.jointJsShape]);
+}
+Node.prototype.deactivate = function(){
+	this.jointJsShape.remove();
+	delete this.jointJsShape;
+}
+//-------------------------------------------------------------------------------------------------------
+
+// This bit goes through all of the comment tags inside of the code and makes nodes for each comment
+for (var i=0;i<$xml.find("comment").length;i++){
+
+	currentFindCmd = "comment:eq(" + i + ")";
+	currentEntry = {};
+	$currentToSearch = $xml.find(currentFindCmd);
+	for (var j = 0; j < commentFields.length;j++){
+		toprint = findFieldInComment($currentToSearch,commentFields[j]);
+		currentEntry[commentFields[j][0]] = toprint;
+	}
+	overlord.makeNewNode(currentEntry);
+	if (i===0){
+		overlord.displayedNode = currentEntry.id;
+		overlord.displayNodeInfo(currentEntry.id);
+	}
+	
+}
+
+function checkCheckmark(){}
+
+
+for (var i =0; i < overlord.allNodes.length;i++){
+	var currentNodeID = overlord.allNodes[i];
+	var currentNode = overlord.nodes[currentNodeID];
+	currentNode.activate(0,0,graph);
+	overlord.addNode(currentNodeID,"activeNodes");
+}
+
+
+</script>
+</body>
+</html>

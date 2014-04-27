@@ -1,0 +1,29 @@
+<comments>
+	<comment>
+		<id>1</id>
+		<title>Moogle</title>
+		<author>Mog</author>
+		<params>westillneedtoworkonsplitting</params>
+		<param>AAA</param>
+		<param>BBB</param>
+		<filename>mooglesushi.txt</filename>
+	</comment>
+	<comment>
+		<id>2</id>
+		<title>Totoro</title>
+		<author>Fokoro</author>
+		<param>AAA</param>
+		<param>BBB</param>
+		<params>pantspants</params>
+		<filename>mynameisbrick.txt</filename>
+	</comment>
+	<comment>
+		<id>3</id>
+		<title>Teddy Bear</title>
+		<author>The Bonz</author>
+		<params>hoteltvisoff</params>
+		<param>AAA</param>
+		<param>BBB</param>
+		<filename>fuzzybear.txt</filename>
+	</comment>
+</comments>
