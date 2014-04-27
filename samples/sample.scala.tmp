@@ -1,0 +1,41 @@
+package sample.flowdoc
+
+/** This is a sample class. We just use it as an example to check that we can parse the comments that we want.
+  * Second line
+  *
+  * @param none this is a parameter
+  */
+class sampleClass() {
+
+  /** This is a sample method.
+    *
+    * @return nothing
+    */
+  def sampleMethod() { // a comment
+
+  }
+
+  /** This is another sample method
+    *
+    * @return nothing
+    * @docId 345
+    */
+  def sampleMethod2(){
+
+    /* a non-doc comment
+      and more
+     */
+  }
+
+  /** This is a sample section of code.
+    *
+    */
+  val x = 0
+  val y = 0
+  println(x + y)
+
+  /**   This is an inline comment */
+  val a = "string" 
+  /** Another comment { @docId 123 }*/
+
+}
